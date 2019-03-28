@@ -1,0 +1,189 @@
+#
+# ansible inventory for OpenShift Container Platform  3.11.82
+#
+
+###########################################################################
+#
+# DISCLAIMER: THIS ALL-IN-ONE DEPLOYMENT IS AN UNSUPPORTED DEPLOYMENT
+#             USING NFS AS STORAGE BACKEND FOR INFRASTRUCTURE COMPONETNS
+#
+###########################################################################
+#
+## All-in-One (AIO) SERVER WITH EMBEDDED NFS:
+# - assume AIO node name:       ocp.example.com
+# - assume app wildcard name:   *.apps.ocp.example.com
+# - assume NFS server configure to export /srv/nfs
+# - using docker or CRI-O
+#
+## If using dnsmasq as the DNS for the lab, the entry will be:
+# $ cat /etc/dnsmasq.d/ocp.example.com.conf
+# address=/ocp.example.com/192.168.1.30
+#
+# Where the IP is the IP of your RHEL AIO server. This entry will also
+# resolve anything *.ocp.example.com to the same IP address.
+#
+## NOTE 2: Some services have been set to use *ephemeral* storage
+#
+###########################################################################
+# Configuring your inventory file
+# https://docs.openshift.com/container-platform/3.11/install/configuring_inventory_file.html
+
+[OSEv3:vars]
+
+###########################################################################
+### Ansible Vars
+###########################################################################
+timeout=60
+ansible_user=root
+#ansible_become=yes
+
+###########################################################################
+### OpenShift Basic Vars
+###########################################################################
+# Deployment type
+#openshift_deployment_type=openshift-enterprise
+openshift_deployment_type=origin
+
+# WARNING: only disable these checks in LAB/TEST environments(Do not use in production)
+#openshift_disable_check="disk_availability,memory_availability"
+openshift_disable_check=disk_availability,docker_storage,memory_availability,docker_image_availability,package_version
+
+# OpenShift Version(Always use sub-release for smoother upgrades):
+#openshift_release=3.11.82
+
+# Deploy Operator Lifecycle Manager (Tech Preview)
+openshift_enable_olm=false
+
+# Enable NFS support for infrastructure components (unsupported)
+openshift_enable_unsupported_configurations=true
+
+###########################################################################
+### Enable CRI-O
+###########################################################################
+
+#openshift_use_crio=True
+#openshift_use_crio_only=False
+#openshift_crio_enable_docker_gc=True
+
+###########################################################################
+### OpenShift Registries Locations
+###########################################################################
+
+# NOTE: Need credentials from: https://access.redhat.com/terms-based-registry/
+#oreg_url=registry.access.redhat.com/openshift3/ose-${component}:${version}
+openshift_examples_modify_imagestreams=true
+#oreg_url=registry.redhat.io/openshift3/ose-${component}:${version}
+#oreg_auth_user={{REGISTY_USER}}
+#oreg_auth_password={{REGISTRY_TOKEN}}
+
+# For Operator Framework Images
+#openshift_additional_registry_credentials=[{'host':'registry.connect.redhat.com','user':'{{REGISTY_USER}}','password':'{{REGISTRY_TOKEN}}','test_image':'mongodb/enterprise-operator:0.3.2'}]
+
+# Update examples to point to oreg_url
+# NOTE: change this if using disconnected install
+openshift_examples_modify_imagestreams=false
+
+# NOTE: accept insecure registries and registries with self-signed certs
+# setup for lab environment
+openshift_docker_hosted_registry_insecure=true
+
+###########################################################################
+### OpenShift Master Vars
+###########################################################################
+
+openshift_master_api_port=8443
+openshift_master_console_port=8443
+
+#Default:  openshift_master_cluster_method=native
+# Internal cluster name
+openshift_master_cluster_hostname=master.techmogun.local
+
+# NOTE: Default wildcard domain for applications
+openshift_master_default_subdomain=apps.master.192.168.10.5.xip.io
+
+###########################################################################
+### OpenShift Network Vars
+###########################################################################
+# Defaults
+osm_cluster_network_cidr=10.1.0.0/16
+openshift_portal_net=172.30.0.0/16
+
+os_sdn_network_plugin_name='redhat/openshift-ovs-networkpolicy'
+
+###########################################################################
+### OpenShift Authentication Vars
+###########################################################################
+
+# htpasswd Authentication(Non-Priviledge UI User until formal identity provider is used. For now htpasswd identity provider)
+# NOTE: read initial identities in htpasswd format from /root/htpasswd.openshift
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider'}]
+
+# Using an external htpasswd file use this:
+#openshift_master_htpasswd_file=/home/cloud-user/htpasswd.openshift
+# Embedding users in the configuration file use this syntax
+# Note: user==password for this example
+openshift_master_htpasswd_users={'ocpadmin':'$apr1$ZuJlQr.Y$6abuePAhKG0iY8QDNWoq80','developer':'$apr1$QE2hKzLx$4ZeptR1hHNP538zRh/Pew.'}
+
+###########################################################################
+### OpenShift Metrics and Logging Vars
+###########################################################################
+
+#########################
+# Prometheus Cluster Monitoring
+#########################
+# https://github.com/openshift/openshift-docs/blob/master/install_config/monitoring/configuring-openshift-cluster-monitoring.adoc
+# https://github.com/openshift/openshift-docs/tree/enterprise-3.11/install_config/monitoring
+
+openshift_cluster_monitoring_operator_install=true
+#openshift_prometheus_node_selector={"node-role.kubernetes.io/infra":"true"}
+
+# NOTE: Setup for lab environment
+# Enable persistent storage of Prometheus time-series data (default false)
+openshift_cluster_monitoring_operator_prometheus_storage_enabled=false
+# Enable persistent storage of Alertmanager notifications (default false)
+openshift_cluster_monitoring_operator_alertmanager_storage_enabled=false
+
+###########################################################################
+### OpenShift Router and Registry Vars
+###########################################################################
+
+# NOTE: Qty should NOT exceed the number of infra nodes
+openshift_hosted_router_replicas=1
+
+openshift_hosted_registry_replicas=1
+openshift_hosted_registry_pullthrough=true
+openshift_hosted_registry_acceptschema2=true
+openshift_hosted_registry_enforcequota=true
+
+###########################################################################
+### OpenShift Cockpit Vars and plugins
+###########################################################################
+
+# Disable cockpit
+osm_use_cockpit=false
+
+###########################################################################
+### OpenShift Hosts
+###########################################################################
+[OSEv3:children]
+nfs
+masters
+etcd
+nodes
+
+[nfs]
+master.techmogun.local
+[masters]
+master.techmogun.local
+
+[etcd]
+master.techmogun.local
+
+[nodes]
+## All-In-One with CRI-O
+#ocp.example.com openshift_node_group_name='node-config-all-in-one-crio' openshift_node_problem_detector_install=true
+master.techmogun.local openshift_node_group_name='node-config-all-in-one' openshift_node_problem_detector_install=true
+
+#
+# END OF FILE
+#
