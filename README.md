@@ -23,18 +23,21 @@ Step 4: Git clone Openshift ansible
 git clone https://github.com/openshift/openshift-ansible.git
 cd openshift-ansible
 git checkout release-3.11
-
-Step 5: Download the inventory
-```sh
-wget 
 ```
+Step 5: Download the inventory (Change the cluster hosname to your own domain & wilcard domain for application apps.master.192.168.10.5.xip.io to your name like apps.<yourdomain>.<yourhostip>.xip.io)
+```sh
+wget https://raw.githubusercontent.com/techmogun/okd-3.11-origin/master/inventory_wildcard_external
+```
+Step 6: Run the playbook for prerequisites. It should completed in all the stages
 
 ```sh
 ansible-playbook -i inventory_wildcard_external openshift-ansible/playbooks/prerequisites.yml
+```
+Step 7: Deploying the cluster
+```sh
 ansible-playbook -i inventory_wildcard_external openshift-ansible/playbooks/deploy_cluster.yml
 ```
-
-#After deployment of cluster
+#After deployment of cluster : Change the password of user ocpadmin & add cluster admin role to ocpadmin user
 ```sh
 htpasswd -b /etc/origin/master/htpasswd ocpadmin <password>
 oc adm policy add-cluster-role-to-user cluster-admin ocpadmin
