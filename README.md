@@ -9,12 +9,10 @@ yum -y update
 Step 2: For password less login
 ```sh
 ssh-keygen -t rsa
-ssh-copy-id root@master
 ssh-copy-id root@master.techmogun.local
 ```
 Step 3: Yum install base packages
 ```sh
-yum install wget
 yum install -y wget git perl net-tools docker-1.13.1 bind-utils iptables-services bridge-utils openssl-devel bash-completion kexec-tools sos psacct python-cryptography python2-pip python-devel python-passlib java-1.8.0-openjdk-headless "@Development Tools"
 yum -y install python-passlib httpd-tools; yum install -y epel-release; yum install -y ansible
 ```
@@ -31,14 +29,16 @@ wget https://raw.githubusercontent.com/techmogun/okd-3.11-origin/master/inventor
 Step 6: Run the playbook for prerequisites. It should completed in all the stages
 
 ```sh
-ansible-playbook -i inventory_wildcard_external openshift-ansible/playbooks/prerequisites.yml
+ansible-playbook -i inventory_wildcard_external playbooks/prerequisites.yml
 ```
 Step 7: Deploying the cluster
 ```sh
-ansible-playbook -i inventory_wildcard_external openshift-ansible/playbooks/deploy_cluster.yml
+ansible-playbook -i inventory_wildcard_external playbooks/deploy_cluster.yml
 ```
 #After deployment of cluster : Change the password of user ocpadmin & add cluster admin role to ocpadmin user
 ```sh
 htpasswd -b /etc/origin/master/htpasswd ocpadmin <password>
 oc adm policy add-cluster-role-to-user cluster-admin ocpadmin
 ```
+#login to openshift webconsole in your browser
+https://master.techmogun.local:8443
